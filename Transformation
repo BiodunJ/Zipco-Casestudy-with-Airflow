@@ -1,0 +1,50 @@
+import pandas as pd
+
+def run_transformation():
+    data = pd.read_csv(r'C:\Users\USER\Desktop\Zipco Casestudy with Airflow\zipco_transaction.csv')
+
+# remove duplicates entries
+
+    data.drop_duplicates(inplace=True)
+
+# replace missing values with mean for numerical columns
+    numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
+    for col in numerical_cols:
+        data.fillna({col:data[col].mean()}, inplace=True)
+
+# replacing missing object values with 'Unknown'
+    object_cols = data.select_dtypes(include=['object']).columns
+    for col in object_cols:
+        data.fillna({col:'Unknown'}, inplace=True)
+
+# covert date columns to datetime format
+    Data = pd.to_datetime(data['Date'], errors='coerce')
+
+#creating fact and dimension tables
+# for products
+    products = data[['ProductName']].drop_duplicates().reset_index(drop=True)
+    products.index.name = 'ProductID'
+    products.reset_index(inplace=True)
+
+# for customers
+    customers = data[['CustomerName', 'CustomerAddress', 'Customer_PhoneNumber',
+       'CustomerEmail']].drop_duplicates().reset_index(drop=True)
+    customers.index.name = 'CustomerID'
+    customers.reset_index(inplace=True)
+
+# for staff
+    staff = data[['Staff_Name', 'Staff_Email']].drop_duplicates().reset_index(drop=True)
+    staff.index.name = 'StaffID'
+    staff.reset_index(inplace=True)
+
+# for transactions
+    transactions = data.merge(products, on=['ProductName'], how='left')\
+                   .merge(customers, on=['CustomerName', 'CustomerAddress', 'Customer_PhoneNumber', 'CustomerEmail'], how='left')\
+                   .merge(staff, on=['Staff_Name', 'Staff_Email'], how='left') 
+
+    transactions.index.name = 'TransactionID'
+    transactions.reset_index(inplace=True)
+    transactions = transactions[['TransactionID','Date',  'ProductID', 'Quantity', 'UnitPrice', 'StoreLocation', 'PaymentType', 'PromotionApplied', 'Weather', 'Temperature', 'StaffPerformanceRating', 'CustomerFeedback', 'DeliveryTime_min', 'OrderType', 'CustomerID', 'StaffID', 'DayOfWeek',
+                             'TotalSales']]
+    
+    print("Data Cleaning and Transformation completed successfully")
